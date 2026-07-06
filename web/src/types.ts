@@ -96,3 +96,70 @@ export interface StatusResponse {
 	};
 	ui: { version: string; cyrusHome: string };
 }
+
+export interface SessionSummary {
+	id: string;
+	status: string;
+	createdAt: number | null;
+	updatedAt: number | null;
+	issueIdentifier: string | null;
+	issueTitle: string | null;
+	tracker: string | null;
+	repositoryIds: string[];
+	branchName: string | null;
+	workspacePath: string | null;
+	workspaceName: string | null;
+	runner: "claude" | "gemini" | "codex" | "cursor" | null;
+	runnerSessionId: string | null;
+	model: string | null;
+	totalCostUsd: number | null;
+	entryCount: number;
+	parentId: string | null;
+}
+
+export interface SessionEntry {
+	type: string;
+	content: string;
+	toolName: string | null;
+	timestamp: number | null;
+	durationMs: number | null;
+	isError: boolean;
+}
+
+export interface TranscriptRef {
+	rel: string;
+	name: string;
+	kind: "md" | "jsonl";
+	sizeBytes: number;
+	mtimeMs: number;
+}
+
+export interface SessionDetail {
+	session: SessionSummary;
+	entries: SessionEntry[];
+	transcripts: TranscriptRef[];
+}
+
+export interface TailResult {
+	content: string;
+	nextOffset: number;
+	sizeBytes: number;
+	startedMidFile: boolean;
+}
+
+export interface UsageBucket {
+	costUsd: number;
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadTokens: number;
+	cacheCreationTokens: number;
+	sessionRuns: number;
+}
+
+export interface UsageReport {
+	totals: UsageBucket;
+	byDay: Record<string, UsageBucket>;
+	byModel: Record<string, UsageBucket>;
+	byWorkspace: Record<string, UsageBucket>;
+	filesScanned: number;
+}

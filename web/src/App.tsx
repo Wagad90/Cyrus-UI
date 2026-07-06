@@ -8,12 +8,23 @@ import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
 import { RawJson } from "./pages/RawJson";
 import { Repositories } from "./pages/Repositories";
+import { Sessions } from "./pages/Sessions";
+import { Usage } from "./pages/Usage";
 import type { ConfigResponse, CyrusConfig, StatusResponse } from "./types";
 
-type Tab = "overview" | "global" | "repositories" | "access" | "raw";
+type Tab =
+	| "overview"
+	| "sessions"
+	| "usage"
+	| "global"
+	| "repositories"
+	| "access"
+	| "raw";
 
 const TABS: { id: Tab; label: string }[] = [
 	{ id: "overview", label: "Overview" },
+	{ id: "sessions", label: "Sessions" },
+	{ id: "usage", label: "Usage" },
 	{ id: "global", label: "Global Settings" },
 	{ id: "repositories", label: "Repositories" },
 	{ id: "access", label: "Access Control" },
@@ -219,6 +230,8 @@ function Shell({ onLogout }: { onLogout: () => void }) {
 									meta={meta}
 								/>
 							)}
+							{tab === "sessions" && <Sessions />}
+							{tab === "usage" && <Usage />}
 							{tab === "global" && (
 								<GlobalSettings config={draft} update={updateDraft} />
 							)}

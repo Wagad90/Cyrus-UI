@@ -1,4 +1,12 @@
-import type { ConfigResponse, CyrusConfig, StatusResponse } from "./types";
+import type {
+	ConfigResponse,
+	CyrusConfig,
+	SessionDetail,
+	SessionSummary,
+	StatusResponse,
+	TailResult,
+	UsageReport,
+} from "./types";
 
 export class ApiError extends Error {
 	constructor(
@@ -51,4 +59,17 @@ export const api = {
 			},
 		),
 	status: () => request<StatusResponse>("/api/status"),
+	sessions: () =>
+		request<{ savedAt: string | null; sessions: SessionSummary[] }>(
+			"/api/sessions",
+		),
+	session: (id: string) =>
+		request<SessionDetail>(`/api/sessions/${encodeURIComponent(id)}`),
+	tail: (path: string, offset: number | null) =>
+		request<TailResult>(
+			`/api/transcripts/tail?path=${encodeURIComponent(path)}${
+				offset !== null ? `&offset=${offset}` : ""
+			}`,
+		),
+	usage: () => request<UsageReport>("/api/usage"),
 };

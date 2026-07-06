@@ -15,8 +15,11 @@ import {
 } from "./cyrusConfig.js";
 import { cyrusStatus } from "./cyrusStatus.js";
 import { env } from "./env.js";
+import { listTranscriptFiles, tailFile } from "./logs.js";
 import { cyrusConfigSchema } from "./schema.js";
+import { getSession, listSessions } from "./sessions.js";
 import { loadUiConfig } from "./uiConfig.js";
+import { usageReport } from "./usage.js";
 
 const SESSION_COOKIE = "cyrus_ui_session";
 
@@ -182,6 +185,62 @@ async function main(): Promise<void> {
 		cyrus: await cyrusStatus(),
 		ui: { version: pkg.version, cyrusHome: env.cyrusHome },
 	}));
+
+	app.get("/api/sessions", async (_req, reply) => {
+		try {
+			return listSessions();
+		} catch (error) {
+			return reply.code(500).send({
+				error: `Failed to read session state: ${(error as Error).message}`,
+			});
+		}
+	});
+
+	app.get("/api/sessions/:id", async (req, reply) => {
+		const { id } = req.params as { id: string };
+		try {
+			const detail = getSession(id);
+			if (!detail) return reply.code(404).send({ error: "Session not found" });
+			return detail;
+		} catch (error) {
+			return reply.code(500).send({
+				error: `Failed to read session: ${(error as Error).message}`,
+			});
+		}
+	});
+
+	app.get("/api/transcripts", async () => ({
+		files: listTranscriptFiles(),
+	}));
+
+	app.get("/api/transcripts/tail", async (req, reply) => {
+		const query = req.query as { path?: string; offset?: string };
+		if (!query.path) {
+			return reply.code(400).send({ error: "path query param required" });
+		}
+		const offset =
+			query.offset !== undefined ? Number.parseInt(query.offset, 10) : null;
+		try {
+			return tailFile(
+				query.path,
+				Number.isFinite(offset as number) ? offset : null,
+			);
+		} catch (error) {
+			return reply
+				.code(404)
+				.send({ error: `Cannot read transcript: ${(error as Error).message}` });
+		}
+	});
+
+	app.get("/api/usage", async (_req, reply) => {
+		try {
+			return await usageReport();
+		} catch (error) {
+			return reply.code(500).send({
+				error: `Failed to aggregate usage: ${(error as Error).message}`,
+			});
+		}
+	});
 
 	const webDist = join(here, "../../web/dist");
 	if (existsSync(webDist)) {
