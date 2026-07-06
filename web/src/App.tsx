@@ -7,9 +7,11 @@ import { GlobalSettings } from "./pages/GlobalSettings";
 import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
 import { Environment } from "./pages/Environment";
+import { Explorer } from "./pages/Explorer";
 import { Maintenance } from "./pages/Maintenance";
 import { Mcp } from "./pages/Mcp";
 import { RawJson } from "./pages/RawJson";
+import { Skills } from "./pages/Skills";
 import { Repositories } from "./pages/Repositories";
 import { Sessions } from "./pages/Sessions";
 import { Usage } from "./pages/Usage";
@@ -22,6 +24,8 @@ type Tab =
 	| "global"
 	| "repositories"
 	| "access"
+	| "skills"
+	| "explorer"
 	| "mcp"
 	| "environment"
 	| "maintenance"
@@ -31,8 +35,10 @@ const TABS: { id: Tab; label: string }[] = [
 	{ id: "overview", label: "Overview" },
 	{ id: "sessions", label: "Sessions" },
 	{ id: "usage", label: "Usage" },
+	{ id: "explorer", label: "Label Explorer" },
 	{ id: "global", label: "Global Settings" },
 	{ id: "repositories", label: "Repositories" },
+	{ id: "skills", label: "Skills & Workflow" },
 	{ id: "access", label: "Access Control" },
 	{ id: "mcp", label: "MCP Servers" },
 	{ id: "environment", label: "Environment" },
@@ -286,6 +292,8 @@ function Shell({ onLogout }: { onLogout: () => void }) {
 							{tab === "access" && (
 								<AccessControl config={draft} update={updateDraft} />
 							)}
+							{tab === "skills" && <Skills config={draft} />}
+							{tab === "explorer" && <Explorer config={draft} />}
 							{tab === "mcp" && <Mcp />}
 							{tab === "environment" && <Environment />}
 							{tab === "maintenance" && <Maintenance />}

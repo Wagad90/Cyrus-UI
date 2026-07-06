@@ -221,6 +221,26 @@ export interface McpFileInfo {
 	referencedBy: string[];
 }
 
+export interface SkillScope {
+	repositoryIds?: string[];
+	linearTeamIds?: string[];
+	linearLabelIds?: string[];
+}
+
+export interface SkillInfo {
+	name: string;
+	description: string | null;
+	sizeBytes: number;
+	mtimeMs: number;
+	scope: SkillScope | null;
+}
+
+export interface SkillsList {
+	defaults: SkillInfo[];
+	user: SkillInfo[];
+	defaultsDeployed: boolean;
+}
+
 export interface SandboxConfig {
 	enabled?: boolean;
 	httpProxyPort?: number;
