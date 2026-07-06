@@ -1,5 +1,8 @@
 export const RUNNERS = ["claude", "gemini", "codex", "cursor"] as const;
 
+/** The Cyrus release this UI's forms/schema were built against. */
+export const TESTED_CYRUS_VERSION = "0.2.66";
+
 /** Known-good model names per runner (free text is always allowed too). */
 export const MODEL_SUGGESTIONS: Record<string, string[]> = {
 	claude: ["fable", "opus", "sonnet", "haiku"],

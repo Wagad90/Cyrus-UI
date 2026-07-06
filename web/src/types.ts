@@ -96,3 +96,142 @@ export interface StatusResponse {
 	};
 	ui: { version: string; cyrusHome: string };
 }
+
+export interface SessionSummary {
+	id: string;
+	status: string;
+	createdAt: number | null;
+	updatedAt: number | null;
+	issueIdentifier: string | null;
+	issueTitle: string | null;
+	tracker: string | null;
+	repositoryIds: string[];
+	branchName: string | null;
+	workspacePath: string | null;
+	workspaceName: string | null;
+	runner: "claude" | "gemini" | "codex" | "cursor" | null;
+	runnerSessionId: string | null;
+	model: string | null;
+	totalCostUsd: number | null;
+	entryCount: number;
+	parentId: string | null;
+}
+
+export interface SessionEntry {
+	type: string;
+	content: string;
+	toolName: string | null;
+	timestamp: number | null;
+	durationMs: number | null;
+	isError: boolean;
+}
+
+export interface TranscriptRef {
+	rel: string;
+	name: string;
+	kind: "md" | "jsonl";
+	sizeBytes: number;
+	mtimeMs: number;
+}
+
+export interface SessionDetail {
+	session: SessionSummary;
+	entries: SessionEntry[];
+	transcripts: TranscriptRef[];
+}
+
+export interface TailResult {
+	content: string;
+	nextOffset: number;
+	sizeBytes: number;
+	startedMidFile: boolean;
+}
+
+export interface UsageBucket {
+	costUsd: number;
+	inputTokens: number;
+	outputTokens: number;
+	cacheReadTokens: number;
+	cacheCreationTokens: number;
+	sessionRuns: number;
+}
+
+export interface UsageReport {
+	totals: UsageBucket;
+	byDay: Record<string, UsageBucket>;
+	byModel: Record<string, UsageBucket>;
+	byWorkspace: Record<string, UsageBucket>;
+	filesScanned: number;
+}
+
+export interface DaemonInfo {
+	reachable: boolean;
+	status: string | null;
+	version: string | null;
+	service: {
+		known: boolean;
+		activeState: string | null;
+		sinceTimestamp: string | null;
+	};
+	restartCommand: string;
+}
+
+export interface WorktreeInfo {
+	path: string;
+	branch: string | null;
+	head: string | null;
+	sizeBytes: number | null;
+	mtimeMs: number | null;
+	activeSession: string | null;
+}
+
+export interface RepoWorktrees {
+	repoId: string;
+	repoName: string;
+	repositoryPath: string;
+	worktrees: WorktreeInfo[];
+	error: string | null;
+}
+
+export interface BackupInfo {
+	name: string;
+	sizeBytes: number;
+	mtimeMs: number;
+}
+
+export interface RepoJob {
+	id: string;
+	state: "running" | "done" | "error";
+	log: string[];
+	repoName: string;
+	startedAt: number;
+}
+
+export interface EnvEntry {
+	key: string;
+	value: string | null; // null = masked secret, unchanged unless edited
+	masked: boolean;
+}
+
+export interface McpFileInfo {
+	path: string;
+	exists: boolean;
+	sizeBytes: number | null;
+	mtimeMs: number | null;
+	referencedBy: string[];
+}
+
+export interface SandboxConfig {
+	enabled?: boolean;
+	httpProxyPort?: number;
+	socksProxyPort?: number;
+	systemWideCert?: boolean;
+	logRequests?: boolean;
+	networkPolicy?: {
+		preset?: string;
+		allow?: Record<string, unknown[]>;
+		subnets?: unknown;
+		[key: string]: unknown;
+	};
+	[key: string]: unknown;
+}

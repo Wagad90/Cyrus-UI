@@ -6,6 +6,13 @@ import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { LoginRateLimiter, SessionStore, verifyPassword } from "./auth.js";
 import {
+	deleteBackup,
+	listBackups,
+	pruneBackups,
+	readBackup,
+	restoreBackup,
+} from "./backups.js";
+import {
 	ConflictError,
 	configPath,
 	maskSecrets,
@@ -13,10 +20,18 @@ import {
 	restoreSecrets,
 	writeConfig,
 } from "./cyrusConfig.js";
+import { DaemonBusyError, daemonInfo, restartDaemon } from "./daemon.js";
+import { readEnvFile, writeEnvFile } from "./envFile.js";
+import { listMcpFiles, readMcpFile, writeMcpFile } from "./mcpFiles.js";
+import { getJob, startCloneJob } from "./repoJobs.js";
+import { listWorktrees, removeWorktree } from "./worktrees.js";
 import { cyrusStatus } from "./cyrusStatus.js";
 import { env } from "./env.js";
+import { listTranscriptFiles, tailFile } from "./logs.js";
 import { cyrusConfigSchema } from "./schema.js";
+import { getSession, listSessions } from "./sessions.js";
 import { loadUiConfig } from "./uiConfig.js";
+import { usageReport } from "./usage.js";
 
 const SESSION_COOKIE = "cyrus_ui_session";
 
@@ -182,6 +197,216 @@ async function main(): Promise<void> {
 		cyrus: await cyrusStatus(),
 		ui: { version: pkg.version, cyrusHome: env.cyrusHome },
 	}));
+
+	app.get("/api/sessions", async (_req, reply) => {
+		try {
+			return listSessions();
+		} catch (error) {
+			return reply.code(500).send({
+				error: `Failed to read session state: ${(error as Error).message}`,
+			});
+		}
+	});
+
+	app.get("/api/sessions/:id", async (req, reply) => {
+		const { id } = req.params as { id: string };
+		try {
+			const detail = getSession(id);
+			if (!detail) return reply.code(404).send({ error: "Session not found" });
+			return detail;
+		} catch (error) {
+			return reply.code(500).send({
+				error: `Failed to read session: ${(error as Error).message}`,
+			});
+		}
+	});
+
+	app.get("/api/transcripts", async () => ({
+		files: listTranscriptFiles(),
+	}));
+
+	app.get("/api/transcripts/tail", async (req, reply) => {
+		const query = req.query as { path?: string; offset?: string };
+		if (!query.path) {
+			return reply.code(400).send({ error: "path query param required" });
+		}
+		const offset =
+			query.offset !== undefined ? Number.parseInt(query.offset, 10) : null;
+		try {
+			return tailFile(
+				query.path,
+				Number.isFinite(offset as number) ? offset : null,
+			);
+		} catch (error) {
+			return reply
+				.code(404)
+				.send({ error: `Cannot read transcript: ${(error as Error).message}` });
+		}
+	});
+
+	app.get("/api/usage", async (_req, reply) => {
+		try {
+			return await usageReport();
+		} catch (error) {
+			return reply.code(500).send({
+				error: `Failed to aggregate usage: ${(error as Error).message}`,
+			});
+		}
+	});
+
+	app.get("/api/daemon", async () => daemonInfo());
+
+	app.post("/api/daemon/restart", async (req, reply) => {
+		const body = req.body as { force?: boolean } | null;
+		try {
+			const result = await restartDaemon(Boolean(body?.force));
+			return { ok: true, output: result.output };
+		} catch (error) {
+			if (error instanceof DaemonBusyError) {
+				return reply.code(409).send({ error: error.message });
+			}
+			return reply.code(500).send({ error: (error as Error).message });
+		}
+	});
+
+	app.get("/api/worktrees", async (_req, reply) => {
+		try {
+			return { repos: await listWorktrees() };
+		} catch (error) {
+			return reply.code(500).send({ error: (error as Error).message });
+		}
+	});
+
+	app.post("/api/worktrees/remove", async (req, reply) => {
+		const body = req.body as { repoId?: string; path?: string } | null;
+		if (!body?.repoId || !body.path) {
+			return reply.code(400).send({ error: "repoId and path required" });
+		}
+		try {
+			await removeWorktree(body.repoId, body.path);
+			return { ok: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.get("/api/backups", async () => ({ backups: listBackups() }));
+
+	app.get("/api/backups/:name", async (req, reply) => {
+		const { name } = req.params as { name: string };
+		try {
+			return { name, config: maskSecrets(readBackup(name)) };
+		} catch (error) {
+			return reply.code(404).send({ error: (error as Error).message });
+		}
+	});
+
+	app.post("/api/backups/:name/restore", async (req, reply) => {
+		const { name } = req.params as { name: string };
+		try {
+			const result = restoreBackup(name);
+			return { ok: true, backupPath: result.backupPath };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.delete("/api/backups/:name", async (req, reply) => {
+		const { name } = req.params as { name: string };
+		try {
+			deleteBackup(name);
+			return { ok: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.post("/api/backups/prune", async (req, reply) => {
+		const body = req.body as { keep?: number } | null;
+		const keep = body?.keep ?? 10;
+		if (!Number.isInteger(keep) || keep < 1) {
+			return reply.code(400).send({ error: "keep must be a positive integer" });
+		}
+		return { ok: true, deleted: pruneBackups(keep) };
+	});
+
+	app.post("/api/repos/clone", async (req, reply) => {
+		const body = req.body as {
+			url?: string;
+			name?: string;
+			baseBranch?: string;
+			routingLabels?: string[];
+			linearWorkspaceId?: string;
+		} | null;
+		const url = body?.url;
+		if (!url) return reply.code(400).send({ error: "url required" });
+		try {
+			const job = startCloneJob({ ...body, url });
+			return { jobId: job.id };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.get("/api/jobs/:id", async (req, reply) => {
+		const { id } = req.params as { id: string };
+		const job = getJob(id);
+		if (!job) return reply.code(404).send({ error: "Job not found" });
+		return job;
+	});
+
+	app.get("/api/env", async (_req, reply) => {
+		try {
+			return readEnvFile();
+		} catch (error) {
+			return reply.code(500).send({ error: (error as Error).message });
+		}
+	});
+
+	app.put("/api/env", async (req, reply) => {
+		const body = req.body as {
+			entries?: { key?: string; value?: string | null }[];
+		} | null;
+		if (!Array.isArray(body?.entries)) {
+			return reply.code(400).send({ error: "entries array required" });
+		}
+		try {
+			writeEnvFile(
+				body.entries.map((e) => ({
+					key: String(e.key ?? ""),
+					value: e.value === null || e.value === undefined ? null : String(e.value),
+				})),
+			);
+			return { ok: true, restartRequired: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.get("/api/mcp/files", async () => ({ files: listMcpFiles() }));
+
+	app.get("/api/mcp/file", async (req, reply) => {
+		const { path } = req.query as { path?: string };
+		if (!path) return reply.code(400).send({ error: "path required" });
+		try {
+			return { path, content: readMcpFile(path) };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.put("/api/mcp/file", async (req, reply) => {
+		const body = req.body as { path?: string; content?: string } | null;
+		if (!body?.path || typeof body.content !== "string") {
+			return reply.code(400).send({ error: "path and content required" });
+		}
+		try {
+			writeMcpFile(body.path, body.content);
+			return { ok: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
 
 	const webDist = join(here, "../../web/dist");
 	if (existsSync(webDist)) {

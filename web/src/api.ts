@@ -1,4 +1,18 @@
-import type { ConfigResponse, CyrusConfig, StatusResponse } from "./types";
+import type {
+	BackupInfo,
+	ConfigResponse,
+	CyrusConfig,
+	DaemonInfo,
+	EnvEntry,
+	McpFileInfo,
+	RepoJob,
+	RepoWorktrees,
+	SessionDetail,
+	SessionSummary,
+	StatusResponse,
+	TailResult,
+	UsageReport,
+} from "./types";
 
 export class ApiError extends Error {
 	constructor(
@@ -51,4 +65,78 @@ export const api = {
 			},
 		),
 	status: () => request<StatusResponse>("/api/status"),
+	sessions: () =>
+		request<{ savedAt: string | null; sessions: SessionSummary[] }>(
+			"/api/sessions",
+		),
+	session: (id: string) =>
+		request<SessionDetail>(`/api/sessions/${encodeURIComponent(id)}`),
+	tail: (path: string, offset: number | null) =>
+		request<TailResult>(
+			`/api/transcripts/tail?path=${encodeURIComponent(path)}${
+				offset !== null ? `&offset=${offset}` : ""
+			}`,
+		),
+	usage: () => request<UsageReport>("/api/usage"),
+	daemon: () => request<DaemonInfo>("/api/daemon"),
+	restartDaemon: (force: boolean) =>
+		request<{ ok: true; output: string }>("/api/daemon/restart", {
+			method: "POST",
+			body: JSON.stringify({ force }),
+		}),
+	worktrees: () => request<{ repos: RepoWorktrees[] }>("/api/worktrees"),
+	removeWorktree: (repoId: string, path: string) =>
+		request<{ ok: true }>("/api/worktrees/remove", {
+			method: "POST",
+			body: JSON.stringify({ repoId, path }),
+		}),
+	backups: () => request<{ backups: BackupInfo[] }>("/api/backups"),
+	backup: (name: string) =>
+		request<{ name: string; config: CyrusConfig }>(
+			`/api/backups/${encodeURIComponent(name)}`,
+		),
+	restoreBackup: (name: string) =>
+		request<{ ok: true; backupPath: string | null }>(
+			`/api/backups/${encodeURIComponent(name)}/restore`,
+			{ method: "POST" },
+		),
+	deleteBackup: (name: string) =>
+		request<{ ok: true }>(`/api/backups/${encodeURIComponent(name)}`, {
+			method: "DELETE",
+		}),
+	pruneBackups: (keep: number) =>
+		request<{ ok: true; deleted: number }>("/api/backups/prune", {
+			method: "POST",
+			body: JSON.stringify({ keep }),
+		}),
+	cloneRepo: (input: {
+		url: string;
+		name?: string;
+		baseBranch?: string;
+		routingLabels?: string[];
+	}) =>
+		request<{ jobId: string }>("/api/repos/clone", {
+			method: "POST",
+			body: JSON.stringify(input),
+		}),
+	job: (id: string) => request<RepoJob>(`/api/jobs/${encodeURIComponent(id)}`),
+	env: () =>
+		request<{ exists: boolean; path: string; entries: EnvEntry[] }>(
+			"/api/env",
+		),
+	saveEnv: (entries: { key: string; value: string | null }[]) =>
+		request<{ ok: true; restartRequired: boolean }>("/api/env", {
+			method: "PUT",
+			body: JSON.stringify({ entries }),
+		}),
+	mcpFiles: () => request<{ files: McpFileInfo[] }>("/api/mcp/files"),
+	mcpFile: (path: string) =>
+		request<{ path: string; content: string }>(
+			`/api/mcp/file?path=${encodeURIComponent(path)}`,
+		),
+	saveMcpFile: (path: string, content: string) =>
+		request<{ ok: true }>("/api/mcp/file", {
+			method: "PUT",
+			body: JSON.stringify({ path, content }),
+		}),
 };

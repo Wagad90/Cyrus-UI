@@ -6,17 +6,37 @@ import { AccessControl } from "./pages/AccessControl";
 import { GlobalSettings } from "./pages/GlobalSettings";
 import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
+import { Environment } from "./pages/Environment";
+import { Maintenance } from "./pages/Maintenance";
+import { Mcp } from "./pages/Mcp";
 import { RawJson } from "./pages/RawJson";
 import { Repositories } from "./pages/Repositories";
+import { Sessions } from "./pages/Sessions";
+import { Usage } from "./pages/Usage";
 import type { ConfigResponse, CyrusConfig, StatusResponse } from "./types";
 
-type Tab = "overview" | "global" | "repositories" | "access" | "raw";
+type Tab =
+	| "overview"
+	| "sessions"
+	| "usage"
+	| "global"
+	| "repositories"
+	| "access"
+	| "mcp"
+	| "environment"
+	| "maintenance"
+	| "raw";
 
 const TABS: { id: Tab; label: string }[] = [
 	{ id: "overview", label: "Overview" },
+	{ id: "sessions", label: "Sessions" },
+	{ id: "usage", label: "Usage" },
 	{ id: "global", label: "Global Settings" },
 	{ id: "repositories", label: "Repositories" },
 	{ id: "access", label: "Access Control" },
+	{ id: "mcp", label: "MCP Servers" },
+	{ id: "environment", label: "Environment" },
+	{ id: "maintenance", label: "Maintenance" },
 	{ id: "raw", label: "Raw JSON" },
 ];
 
@@ -144,8 +164,44 @@ function Shell({ onLogout }: { onLogout: () => void }) {
 			: { color: "bg-emerald-500", label: "Cyrus idle" };
 
 	return (
-		<div className="flex min-h-screen">
-			<aside className="flex w-60 shrink-0 flex-col border-r border-slate-800 bg-slate-900/40 p-4">
+		<div className="flex min-h-screen flex-col md:flex-row">
+			{/* Mobile top bar */}
+			<header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/95 backdrop-blur md:hidden">
+				<div className="flex items-center gap-2 px-3 py-2">
+					<span className="text-xl">🎛️</span>
+					<span className="font-semibold text-white">Cyrus Control</span>
+					<span className={`h-2 w-2 rounded-full ${statusDot.color}`} />
+					<span className="text-xs text-slate-500">{statusDot.label}</span>
+					<button
+						type="button"
+						className="ml-auto text-xs text-slate-400 underline"
+						onClick={async () => {
+							await api.logout();
+							onLogout();
+						}}
+					>
+						Sign out
+					</button>
+				</div>
+				<nav className="flex gap-1 overflow-x-auto px-2 pb-2">
+					{TABS.map((t) => (
+						<button
+							key={t.id}
+							type="button"
+							onClick={() => setTab(t.id)}
+							className={`shrink-0 rounded-md px-2.5 py-1 text-xs ${
+								tab === t.id
+									? "bg-sky-600/20 font-medium text-sky-300"
+									: "text-slate-400"
+							}`}
+						>
+							{t.label}
+						</button>
+					))}
+				</nav>
+			</header>
+
+			<aside className="hidden w-60 shrink-0 flex-col border-r border-slate-800 bg-slate-900/40 p-4 md:flex">
 				<div className="mb-6 flex items-center gap-2">
 					<span className="text-2xl">🎛️</span>
 					<div>
@@ -187,7 +243,7 @@ function Shell({ onLogout }: { onLogout: () => void }) {
 				</div>
 			</aside>
 
-			<main className="min-w-0 flex-1 p-6 pb-24">
+			<main className="min-w-0 flex-1 p-4 pb-24 md:p-6">
 				<div className="mx-auto max-w-5xl">
 					<h1 className="mb-5 text-xl font-semibold text-white">
 						{TABS.find((t) => t.id === tab)?.label}
@@ -219,6 +275,8 @@ function Shell({ onLogout }: { onLogout: () => void }) {
 									meta={meta}
 								/>
 							)}
+							{tab === "sessions" && <Sessions />}
+							{tab === "usage" && <Usage />}
 							{tab === "global" && (
 								<GlobalSettings config={draft} update={updateDraft} />
 							)}
@@ -228,6 +286,9 @@ function Shell({ onLogout }: { onLogout: () => void }) {
 							{tab === "access" && (
 								<AccessControl config={draft} update={updateDraft} />
 							)}
+							{tab === "mcp" && <Mcp />}
+							{tab === "environment" && <Environment />}
+							{tab === "maintenance" && <Maintenance />}
 							{tab === "raw" && (
 								<RawJson draft={draft} setDraft={(next) => setDraft(next)} />
 							)}
