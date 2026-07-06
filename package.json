@@ -1,0 +1,19 @@
+{
+	"name": "cyrus-ui",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Self-hosted web control panel for a Cyrus agent instance",
+	"type": "module",
+	"workspaces": ["server", "web"],
+	"scripts": {
+		"build": "npm run build -w web && npm run build -w server",
+		"start": "node server/dist/index.js",
+		"dev:server": "npm run dev -w server",
+		"dev:web": "npm run dev -w web",
+		"set-password": "node server/dist/cli.js set-password",
+		"test": "npm run test -w server"
+	},
+	"engines": {
+		"node": ">=20"
+	}
+}

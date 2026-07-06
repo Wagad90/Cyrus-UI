@@ -1,0 +1,23 @@
+[Unit]
+Description=Cyrus Control UI
+After=network.target
+
+[Service]
+Type=simple
+# Run as the SAME user that runs the cyrus daemon, so ~/.cyrus resolves
+# to the right home directory.
+User=CHANGE_ME_USER
+WorkingDirectory=/opt/cyrus-ui
+ExecStart=/usr/bin/env node server/dist/index.js
+Restart=always
+RestartSec=3
+
+# Defaults shown; uncomment to override.
+#Environment=CYRUS_UI_PORT=8899
+#Environment=CYRUS_UI_HOST=127.0.0.1
+#Environment=CYRUS_SERVER_PORT=3456
+#Environment=CYRUS_HOME=/home/CHANGE_ME_USER/.cyrus
+#Environment=CYRUS_UI_DATA_DIR=/home/CHANGE_ME_USER/.cyrus-ui
+
+[Install]
+WantedBy=multi-user.target
