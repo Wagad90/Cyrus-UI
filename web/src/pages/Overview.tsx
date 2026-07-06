@@ -1,4 +1,5 @@
 import { Section, Button } from "../components/ui";
+import { TESTED_CYRUS_VERSION } from "../constants";
 import type { CyrusConfig, StatusResponse } from "../types";
 import { formatTime } from "../util";
 
@@ -63,6 +64,14 @@ export function Overview({
 						Can't reach the Cyrus daemon on port {cyrus?.port}. Config editing
 						still works — Cyrus reads config.json from disk when it starts (and
 						hot-reloads it while running).
+					</p>
+				)}
+				{cyrus?.version && cyrus.version !== TESTED_CYRUS_VERSION && (
+					<p className="text-xs text-slate-500">
+						ℹ This UI's forms were built against Cyrus {TESTED_CYRUS_VERSION};
+						your daemon runs {cyrus.version}. Everything still works — config
+						fields added in newer releases are preserved on save and editable
+						via the Raw JSON tab.
 					</p>
 				)}
 				<Button onClick={onRefresh}>Refresh</Button>
