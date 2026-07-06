@@ -21,6 +21,8 @@ import {
 	writeConfig,
 } from "./cyrusConfig.js";
 import { DaemonBusyError, daemonInfo, restartDaemon } from "./daemon.js";
+import { readEnvFile, writeEnvFile } from "./envFile.js";
+import { listMcpFiles, readMcpFile, writeMcpFile } from "./mcpFiles.js";
 import { getJob, startCloneJob } from "./repoJobs.js";
 import { listWorktrees, removeWorktree } from "./worktrees.js";
 import { cyrusStatus } from "./cyrusStatus.js";
@@ -351,6 +353,59 @@ async function main(): Promise<void> {
 		const job = getJob(id);
 		if (!job) return reply.code(404).send({ error: "Job not found" });
 		return job;
+	});
+
+	app.get("/api/env", async (_req, reply) => {
+		try {
+			return readEnvFile();
+		} catch (error) {
+			return reply.code(500).send({ error: (error as Error).message });
+		}
+	});
+
+	app.put("/api/env", async (req, reply) => {
+		const body = req.body as {
+			entries?: { key?: string; value?: string | null }[];
+		} | null;
+		if (!Array.isArray(body?.entries)) {
+			return reply.code(400).send({ error: "entries array required" });
+		}
+		try {
+			writeEnvFile(
+				body.entries.map((e) => ({
+					key: String(e.key ?? ""),
+					value: e.value === null || e.value === undefined ? null : String(e.value),
+				})),
+			);
+			return { ok: true, restartRequired: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.get("/api/mcp/files", async () => ({ files: listMcpFiles() }));
+
+	app.get("/api/mcp/file", async (req, reply) => {
+		const { path } = req.query as { path?: string };
+		if (!path) return reply.code(400).send({ error: "path required" });
+		try {
+			return { path, content: readMcpFile(path) };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.put("/api/mcp/file", async (req, reply) => {
+		const body = req.body as { path?: string; content?: string } | null;
+		if (!body?.path || typeof body.content !== "string") {
+			return reply.code(400).send({ error: "path and content required" });
+		}
+		try {
+			writeMcpFile(body.path, body.content);
+			return { ok: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
 	});
 
 	const webDist = join(here, "../../web/dist");

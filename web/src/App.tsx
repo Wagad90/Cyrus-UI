@@ -6,7 +6,9 @@ import { AccessControl } from "./pages/AccessControl";
 import { GlobalSettings } from "./pages/GlobalSettings";
 import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
+import { Environment } from "./pages/Environment";
 import { Maintenance } from "./pages/Maintenance";
+import { Mcp } from "./pages/Mcp";
 import { RawJson } from "./pages/RawJson";
 import { Repositories } from "./pages/Repositories";
 import { Sessions } from "./pages/Sessions";
@@ -20,6 +22,8 @@ type Tab =
 	| "global"
 	| "repositories"
 	| "access"
+	| "mcp"
+	| "environment"
 	| "maintenance"
 	| "raw";
 
@@ -30,6 +34,8 @@ const TABS: { id: Tab; label: string }[] = [
 	{ id: "global", label: "Global Settings" },
 	{ id: "repositories", label: "Repositories" },
 	{ id: "access", label: "Access Control" },
+	{ id: "mcp", label: "MCP Servers" },
+	{ id: "environment", label: "Environment" },
 	{ id: "maintenance", label: "Maintenance" },
 	{ id: "raw", label: "Raw JSON" },
 ];
@@ -244,6 +250,8 @@ function Shell({ onLogout }: { onLogout: () => void }) {
 							{tab === "access" && (
 								<AccessControl config={draft} update={updateDraft} />
 							)}
+							{tab === "mcp" && <Mcp />}
+							{tab === "environment" && <Environment />}
 							{tab === "maintenance" && <Maintenance />}
 							{tab === "raw" && (
 								<RawJson draft={draft} setDraft={(next) => setDraft(next)} />

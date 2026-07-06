@@ -206,3 +206,32 @@ export interface RepoJob {
 	repoName: string;
 	startedAt: number;
 }
+
+export interface EnvEntry {
+	key: string;
+	value: string | null; // null = masked secret, unchanged unless edited
+	masked: boolean;
+}
+
+export interface McpFileInfo {
+	path: string;
+	exists: boolean;
+	sizeBytes: number | null;
+	mtimeMs: number | null;
+	referencedBy: string[];
+}
+
+export interface SandboxConfig {
+	enabled?: boolean;
+	httpProxyPort?: number;
+	socksProxyPort?: number;
+	systemWideCert?: boolean;
+	logRequests?: boolean;
+	networkPolicy?: {
+		preset?: string;
+		allow?: Record<string, unknown[]>;
+		subnets?: unknown;
+		[key: string]: unknown;
+	};
+	[key: string]: unknown;
+}

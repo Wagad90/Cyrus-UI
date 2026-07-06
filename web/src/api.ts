@@ -3,6 +3,8 @@ import type {
 	ConfigResponse,
 	CyrusConfig,
 	DaemonInfo,
+	EnvEntry,
+	McpFileInfo,
 	RepoJob,
 	RepoWorktrees,
 	SessionDetail,
@@ -118,4 +120,23 @@ export const api = {
 			body: JSON.stringify(input),
 		}),
 	job: (id: string) => request<RepoJob>(`/api/jobs/${encodeURIComponent(id)}`),
+	env: () =>
+		request<{ exists: boolean; path: string; entries: EnvEntry[] }>(
+			"/api/env",
+		),
+	saveEnv: (entries: { key: string; value: string | null }[]) =>
+		request<{ ok: true; restartRequired: boolean }>("/api/env", {
+			method: "PUT",
+			body: JSON.stringify({ entries }),
+		}),
+	mcpFiles: () => request<{ files: McpFileInfo[] }>("/api/mcp/files"),
+	mcpFile: (path: string) =>
+		request<{ path: string; content: string }>(
+			`/api/mcp/file?path=${encodeURIComponent(path)}`,
+		),
+	saveMcpFile: (path: string, content: string) =>
+		request<{ ok: true }>("/api/mcp/file", {
+			method: "PUT",
+			body: JSON.stringify({ path, content }),
+		}),
 };
