@@ -30,11 +30,22 @@ Because Cyrus hot-reloads its config file, every change you save here **applies 
 
 ## Install
 
+Install as the **same user that runs the `cyrus` daemon** (so `~/.cyrus` resolves correctly). Cloning into your home directory needs no sudo:
+
 ```bash
-git clone https://github.com/Wagad90/Cyrus-UI.git /opt/cyrus-ui
-cd /opt/cyrus-ui
+git clone https://github.com/Wagad90/Cyrus-UI.git ~/cyrus-ui
+cd ~/cyrus-ui
 ./deploy/install.sh        # installs deps, builds, prompts for the UI password
 ```
+
+Prefer `/opt`? Create the directory with the right ownership first (`/opt` is root-owned):
+
+```bash
+sudo mkdir -p /opt/cyrus-ui && sudo chown "$USER" /opt/cyrus-ui
+git clone https://github.com/Wagad90/Cyrus-UI.git /opt/cyrus-ui
+```
+
+Wherever it lives, set `WorkingDirectory` in the systemd unit to match.
 
 Run it manually to try it out:
 
