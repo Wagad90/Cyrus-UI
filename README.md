@@ -35,8 +35,10 @@ Install as the **same user that runs the `cyrus` daemon** (so `~/.cyrus` resolve
 ```bash
 git clone https://github.com/Wagad90/Cyrus-UI.git ~/cyrus-ui
 cd ~/cyrus-ui
-./deploy/install.sh        # installs deps, builds, prompts for the UI password
+./deploy/install.sh
 ```
+
+The script installs dependencies, builds, prompts for the UI password, and offers to install + start the systemd service for you (generated with the right user, paths, and node binary). Re-run it after a `git pull` to update: it rebuilds, keeps your password, and restarts the service.
 
 Prefer `/opt`? Create the directory with the right ownership first (`/opt` is root-owned):
 
