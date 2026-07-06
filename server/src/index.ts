@@ -6,6 +6,13 @@ import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { LoginRateLimiter, SessionStore, verifyPassword } from "./auth.js";
 import {
+	deleteBackup,
+	listBackups,
+	pruneBackups,
+	readBackup,
+	restoreBackup,
+} from "./backups.js";
+import {
 	ConflictError,
 	configPath,
 	maskSecrets,
@@ -13,6 +20,9 @@ import {
 	restoreSecrets,
 	writeConfig,
 } from "./cyrusConfig.js";
+import { DaemonBusyError, daemonInfo, restartDaemon } from "./daemon.js";
+import { getJob, startCloneJob } from "./repoJobs.js";
+import { listWorktrees, removeWorktree } from "./worktrees.js";
 import { cyrusStatus } from "./cyrusStatus.js";
 import { env } from "./env.js";
 import { listTranscriptFiles, tailFile } from "./logs.js";
@@ -240,6 +250,107 @@ async function main(): Promise<void> {
 				error: `Failed to aggregate usage: ${(error as Error).message}`,
 			});
 		}
+	});
+
+	app.get("/api/daemon", async () => daemonInfo());
+
+	app.post("/api/daemon/restart", async (req, reply) => {
+		const body = req.body as { force?: boolean } | null;
+		try {
+			const result = await restartDaemon(Boolean(body?.force));
+			return { ok: true, output: result.output };
+		} catch (error) {
+			if (error instanceof DaemonBusyError) {
+				return reply.code(409).send({ error: error.message });
+			}
+			return reply.code(500).send({ error: (error as Error).message });
+		}
+	});
+
+	app.get("/api/worktrees", async (_req, reply) => {
+		try {
+			return { repos: await listWorktrees() };
+		} catch (error) {
+			return reply.code(500).send({ error: (error as Error).message });
+		}
+	});
+
+	app.post("/api/worktrees/remove", async (req, reply) => {
+		const body = req.body as { repoId?: string; path?: string } | null;
+		if (!body?.repoId || !body.path) {
+			return reply.code(400).send({ error: "repoId and path required" });
+		}
+		try {
+			await removeWorktree(body.repoId, body.path);
+			return { ok: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.get("/api/backups", async () => ({ backups: listBackups() }));
+
+	app.get("/api/backups/:name", async (req, reply) => {
+		const { name } = req.params as { name: string };
+		try {
+			return { name, config: maskSecrets(readBackup(name)) };
+		} catch (error) {
+			return reply.code(404).send({ error: (error as Error).message });
+		}
+	});
+
+	app.post("/api/backups/:name/restore", async (req, reply) => {
+		const { name } = req.params as { name: string };
+		try {
+			const result = restoreBackup(name);
+			return { ok: true, backupPath: result.backupPath };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.delete("/api/backups/:name", async (req, reply) => {
+		const { name } = req.params as { name: string };
+		try {
+			deleteBackup(name);
+			return { ok: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.post("/api/backups/prune", async (req, reply) => {
+		const body = req.body as { keep?: number } | null;
+		const keep = body?.keep ?? 10;
+		if (!Number.isInteger(keep) || keep < 1) {
+			return reply.code(400).send({ error: "keep must be a positive integer" });
+		}
+		return { ok: true, deleted: pruneBackups(keep) };
+	});
+
+	app.post("/api/repos/clone", async (req, reply) => {
+		const body = req.body as {
+			url?: string;
+			name?: string;
+			baseBranch?: string;
+			routingLabels?: string[];
+			linearWorkspaceId?: string;
+		} | null;
+		const url = body?.url;
+		if (!url) return reply.code(400).send({ error: "url required" });
+		try {
+			const job = startCloneJob({ ...body, url });
+			return { jobId: job.id };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.get("/api/jobs/:id", async (req, reply) => {
+		const { id } = req.params as { id: string };
+		const job = getJob(id);
+		if (!job) return reply.code(404).send({ error: "Job not found" });
+		return job;
 	});
 
 	const webDist = join(here, "../../web/dist");

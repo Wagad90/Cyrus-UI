@@ -163,3 +163,46 @@ export interface UsageReport {
 	byWorkspace: Record<string, UsageBucket>;
 	filesScanned: number;
 }
+
+export interface DaemonInfo {
+	reachable: boolean;
+	status: string | null;
+	version: string | null;
+	service: {
+		known: boolean;
+		activeState: string | null;
+		sinceTimestamp: string | null;
+	};
+	restartCommand: string;
+}
+
+export interface WorktreeInfo {
+	path: string;
+	branch: string | null;
+	head: string | null;
+	sizeBytes: number | null;
+	mtimeMs: number | null;
+	activeSession: string | null;
+}
+
+export interface RepoWorktrees {
+	repoId: string;
+	repoName: string;
+	repositoryPath: string;
+	worktrees: WorktreeInfo[];
+	error: string | null;
+}
+
+export interface BackupInfo {
+	name: string;
+	sizeBytes: number;
+	mtimeMs: number;
+}
+
+export interface RepoJob {
+	id: string;
+	state: "running" | "done" | "error";
+	log: string[];
+	repoName: string;
+	startedAt: number;
+}

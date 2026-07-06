@@ -1,6 +1,10 @@
 import type {
+	BackupInfo,
 	ConfigResponse,
 	CyrusConfig,
+	DaemonInfo,
+	RepoJob,
+	RepoWorktrees,
 	SessionDetail,
 	SessionSummary,
 	StatusResponse,
@@ -72,4 +76,46 @@ export const api = {
 			}`,
 		),
 	usage: () => request<UsageReport>("/api/usage"),
+	daemon: () => request<DaemonInfo>("/api/daemon"),
+	restartDaemon: (force: boolean) =>
+		request<{ ok: true; output: string }>("/api/daemon/restart", {
+			method: "POST",
+			body: JSON.stringify({ force }),
+		}),
+	worktrees: () => request<{ repos: RepoWorktrees[] }>("/api/worktrees"),
+	removeWorktree: (repoId: string, path: string) =>
+		request<{ ok: true }>("/api/worktrees/remove", {
+			method: "POST",
+			body: JSON.stringify({ repoId, path }),
+		}),
+	backups: () => request<{ backups: BackupInfo[] }>("/api/backups"),
+	backup: (name: string) =>
+		request<{ name: string; config: CyrusConfig }>(
+			`/api/backups/${encodeURIComponent(name)}`,
+		),
+	restoreBackup: (name: string) =>
+		request<{ ok: true; backupPath: string | null }>(
+			`/api/backups/${encodeURIComponent(name)}/restore`,
+			{ method: "POST" },
+		),
+	deleteBackup: (name: string) =>
+		request<{ ok: true }>(`/api/backups/${encodeURIComponent(name)}`, {
+			method: "DELETE",
+		}),
+	pruneBackups: (keep: number) =>
+		request<{ ok: true; deleted: number }>("/api/backups/prune", {
+			method: "POST",
+			body: JSON.stringify({ keep }),
+		}),
+	cloneRepo: (input: {
+		url: string;
+		name?: string;
+		baseBranch?: string;
+		routingLabels?: string[];
+	}) =>
+		request<{ jobId: string }>("/api/repos/clone", {
+			method: "POST",
+			body: JSON.stringify(input),
+		}),
+	job: (id: string) => request<RepoJob>(`/api/jobs/${encodeURIComponent(id)}`),
 };

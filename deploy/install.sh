@@ -103,6 +103,26 @@ UNIT
 				echo "Service installed but not active — check: journalctl -u $SERVICE_NAME -e" >&2
 				exit 1
 			fi
+
+			# The Maintenance tab's "Restart Cyrus" button runs
+			# `sudo -n systemctl restart cyrus`, which needs a sudoers rule.
+			SYSTEMCTL_BIN="$(command -v systemctl)"
+			SUDOERS_FILE="/etc/sudoers.d/cyrus-ui-restart"
+			ask "Let the UI restart the cyrus daemon? Adds a sudoers rule allowing only '$SYSTEMCTL_BIN restart cyrus'. (Y/n)" "y"
+			case "$REPLY" in
+				[Nn]*) echo "Skipped — the Restart button will show a permission error if used." ;;
+				*)
+					rule_tmp="$(mktemp)"
+					echo "$RUN_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart cyrus" >"$rule_tmp"
+					if sudo visudo -c -f "$rule_tmp" >/dev/null; then
+						sudo install -m 0440 "$rule_tmp" "$SUDOERS_FILE"
+						echo "Sudoers rule installed ✓"
+					else
+						echo "Generated sudoers rule failed validation — skipped." >&2
+					fi
+					rm -f "$rule_tmp"
+					;;
+			esac
 			;;
 	esac
 else
