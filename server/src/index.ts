@@ -24,6 +24,14 @@ import { DaemonBusyError, daemonInfo, restartDaemon } from "./daemon.js";
 import { readEnvFile, writeEnvFile } from "./envFile.js";
 import { listMcpFiles, readMcpFile, writeMcpFile } from "./mcpFiles.js";
 import { getJob, startCloneJob } from "./repoJobs.js";
+import {
+	type SkillRoot,
+	deleteSkill,
+	listSkills,
+	readSkill,
+	resetDefaultSkills,
+	writeSkill,
+} from "./skillFiles.js";
 import { listWorktrees, removeWorktree } from "./worktrees.js";
 import { cyrusStatus } from "./cyrusStatus.js";
 import { env } from "./env.js";
@@ -392,6 +400,69 @@ async function main(): Promise<void> {
 			return { path, content: readMcpFile(path) };
 		} catch (error) {
 			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	const asSkillRoot = (value: string): SkillRoot | null =>
+		value === "default" || value === "user" ? value : null;
+
+	app.get("/api/skill-files", async () => listSkills());
+
+	app.get("/api/skill-files/:root/:name", async (req, reply) => {
+		const { root, name } = req.params as { root: string; name: string };
+		const skillRoot = asSkillRoot(root);
+		if (!skillRoot) return reply.code(400).send({ error: "Invalid root" });
+		try {
+			return { root: skillRoot, name, ...readSkill(skillRoot, name) };
+		} catch (error) {
+			return reply.code(404).send({ error: (error as Error).message });
+		}
+	});
+
+	app.put("/api/skill-files/:root/:name", async (req, reply) => {
+		const { root, name } = req.params as { root: string; name: string };
+		const skillRoot = asSkillRoot(root);
+		if (!skillRoot) return reply.code(400).send({ error: "Invalid root" });
+		const body = req.body as {
+			content?: string;
+			scope?: {
+				repositoryIds?: string[];
+				linearTeamIds?: string[];
+				linearLabelIds?: string[];
+			} | null;
+		} | null;
+		if (typeof body?.content !== "string") {
+			return reply.code(400).send({ error: "content required" });
+		}
+		try {
+			writeSkill(skillRoot, name, body.content, body.scope);
+			return { ok: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.delete("/api/skill-files/:root/:name", async (req, reply) => {
+		const { root, name } = req.params as { root: string; name: string };
+		const skillRoot = asSkillRoot(root);
+		if (!skillRoot) return reply.code(400).send({ error: "Invalid root" });
+		try {
+			deleteSkill(skillRoot, name);
+			return { ok: true };
+		} catch (error) {
+			return reply.code(400).send({ error: (error as Error).message });
+		}
+	});
+
+	app.post("/api/skill-files/reset-defaults", async (_req, reply) => {
+		try {
+			resetDefaultSkills();
+			return {
+				ok: true,
+				note: "Deployed defaults removed. Restart Cyrus (Maintenance tab) to redeploy pristine copies.",
+			};
+		} catch (error) {
+			return reply.code(500).send({ error: (error as Error).message });
 		}
 	});
 

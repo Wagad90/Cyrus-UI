@@ -13,6 +13,8 @@ Because Cyrus hot-reloads its config file, every config change you save here **a
 | **Usage** | Token/cost stats aggregated from session transcripts, by day / model / workspace |
 | **Global Settings** | Default runner (claude/gemini/codex/cursor), per-runner default models, prompt-mode tool defaults, behaviour toggles, **sandbox/egress policy editor** |
 | **Repositories** | Per-repo issue routing (labels/projects/teams), model overrides, tool permissions, and the label → AI mode mapping (debugger/builder/scoper/orchestrator) |
+| **Label Explorer** | Simulate an issue's labels/team/project and see the whole decision pipeline graphically: repository routing → AI mode → runner & model → allowed tools → workflow skills, each with the reason — plus a clickable vocabulary of every label your config gives meaning to |
+| **Skills & Workflow** | Edit the deployed default workflow skills (what actually happens on each request: investigate, implementation, verify-and-ship…) and create custom user skills with repo/team/label scoping; reset defaults with one click |
 | **Access Control** | Allowed/blocked Linear users, block behaviour and message |
 | **MCP Servers** | View/edit the MCP config files referenced by your config (JSON-validated; only referenced paths are touchable) |
 | **Environment** | Edit `~/.cyrus/.env` with secret masking and restart-required indicators |
@@ -99,3 +101,4 @@ All under `/api`, cookie-authenticated except the auth endpoints themselves:
 | Backups | `GET /api/backups`, `GET /api/backups/:name`, `POST /api/backups/:name/restore`, `DELETE /api/backups/:name`, `POST /api/backups/prune` |
 | Env | `GET/PUT /api/env` |
 | MCP | `GET /api/mcp/files`, `GET/PUT /api/mcp/file` |
+| Skills | `GET /api/skill-files`, `GET/PUT/DELETE /api/skill-files/:root/:name`, `POST /api/skill-files/reset-defaults` |

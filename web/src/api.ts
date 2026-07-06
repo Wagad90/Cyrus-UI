@@ -9,6 +9,8 @@ import type {
 	RepoWorktrees,
 	SessionDetail,
 	SessionSummary,
+	SkillScope,
+	SkillsList,
 	StatusResponse,
 	TailResult,
 	UsageReport,
@@ -26,8 +28,13 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(path, {
-		headers: { "Content-Type": "application/json" },
 		...init,
+		headers: {
+			// Only claim a JSON body when there is one — Fastify 400s a
+			// bodyless DELETE that carries a JSON content-type.
+			...(init?.body ? { "Content-Type": "application/json" } : {}),
+			...init?.headers,
+		},
 	});
 	if (!res.ok) {
 		let message = `Request failed (${res.status})`;
@@ -138,5 +145,29 @@ export const api = {
 		request<{ ok: true }>("/api/mcp/file", {
 			method: "PUT",
 			body: JSON.stringify({ path, content }),
+		}),
+	skills: () => request<SkillsList>("/api/skill-files"),
+	skill: (root: "default" | "user", name: string) =>
+		request<{ root: string; name: string; content: string; scope: SkillScope | null }>(
+			`/api/skill-files/${root}/${encodeURIComponent(name)}`,
+		),
+	saveSkill: (
+		root: "default" | "user",
+		name: string,
+		content: string,
+		scope?: SkillScope | null,
+	) =>
+		request<{ ok: true }>(
+			`/api/skill-files/${root}/${encodeURIComponent(name)}`,
+			{ method: "PUT", body: JSON.stringify({ content, scope }) },
+		),
+	deleteSkill: (root: "default" | "user", name: string) =>
+		request<{ ok: true }>(
+			`/api/skill-files/${root}/${encodeURIComponent(name)}`,
+			{ method: "DELETE" },
+		),
+	resetDefaultSkills: () =>
+		request<{ ok: true; note: string }>("/api/skill-files/reset-defaults", {
+			method: "POST",
 		}),
 };
